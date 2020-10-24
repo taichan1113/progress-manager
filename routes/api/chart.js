@@ -1,0 +1,1 @@
+Chart = require('../../models/Chart');
