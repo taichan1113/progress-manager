@@ -38,8 +38,8 @@ router.post(
       }
 
       // Encrypt password
-      let salt = bcrypt.genSaltSync(10);
-      let hash = bcrypt.hashSync(password, salt);
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync(password, salt);
 
       user = new User({ name, email, password: hash });
       await user.save();

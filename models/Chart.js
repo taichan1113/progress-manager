@@ -6,8 +6,11 @@ const ChartSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'user',
   },
+  name: {
+    type: String
+  },
 
-  chartInfo: [
+  info: [
     {
       TaskID: {
         type: String,
@@ -32,7 +35,7 @@ const ChartSchema = new Schema({
       },
       PercentComplete: {
         type: Number,
-        required: true,
+        default: 0,
       },
       Dependencies: {
         type: String,
