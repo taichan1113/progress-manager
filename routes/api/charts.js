@@ -62,7 +62,9 @@ router.post(
 // @acces   Public
 router.get('/user/:user_id', async (req, res) => {
   try {
-    const chart = await Chart.find({ user: req.params.user_id }).populate('user', ['name']);
+    const chart = await Chart.find({
+      user: req.params.user_id,
+    }).populate('user', ['name']);
     if (!chart) return res.status(400).json({ msg: 'User not found' });
     res.json(chart);
   } catch (err) {
@@ -74,7 +76,6 @@ router.get('/user/:user_id', async (req, res) => {
 // @route   PUT api/charts/:id
 // @desc    Update chart(project) by id
 // @acces   Private
-
 
 // @route   DELETE api/charts/:id
 // @desc    Delete chart(project) by id
@@ -100,13 +101,13 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// ----- about chart infomation -----
+// ------------------------- about chart infomation -------------------------
 
-// @route   PUT api/charts/info
+// @route   PUT api/charts/info/:chart_id
 // @desc    Add chart info
 // @acces   Private
 router.put(
-  '/info',
+  '/info/:chart_id',
   [
     auth,
     [
@@ -150,13 +151,18 @@ router.put(
     };
 
     try {
-      const chart = await Chart.findOne({ user: req.user.id });
+      const chart = await Chart.findById(req.params.chart_id);
       // See if TaskID is duplicated
       const sameNameInfo = chart.info.filter(
         (info) => info.TaskID === newInfo.TaskID
       );
       if (sameNameInfo.length) {
         return res.status(400).json({ msg: 'TaskID is duplicated' });
+      }
+
+      // Check user
+      if (chart.user.toString() !== req.user.id) {
+        return res.status(401).json({ msg: 'User not authorized' });
       }
 
       chart.info.unshift(newInfo);
@@ -169,12 +175,28 @@ router.put(
   }
 );
 
-// @route   DELETE api/charts/info/:id
+// @route   DELETE api/charts/info/:chart_id/:info_id
 // @desc    Delete chart info
 // @acces   Private
-router.delete('/info/:info_id', auth, async (req, res) => {
+router.delete('/info/:chart_id/:info_id', auth, async (req, res) => {
   try {
-    const chart = await Chart.findOne({ user: req.user.id });
+    const chart = await Chart.findById(req.params.chart_id);
+
+    // Pull out info
+    const targetInfo = chart.info.find(
+      (item) => item.id === req.params.info_id
+    );
+
+    // Make sure info exists
+    if (!targetInfo) {
+      return res.status(404).json({ msg: 'Info not found' });
+    }
+
+    // Check user
+    if (chart.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'User not authorized' });
+    }
+
     // Get remove index
     const removeIndex = chart.info
       .map((item) => item.id)
@@ -189,11 +211,11 @@ router.delete('/info/:info_id', auth, async (req, res) => {
   }
 });
 
-// @route   PUT api/charts/info/:info_id
+// @route   PUT api/charts/info/:chart_id/:info_id
 // @desc    Update chart info
 // @acces   Private
 router.put(
-  '/info/:info_id',
+  '/info/:chart_id/:info_id',
   [
     auth,
     [
@@ -237,14 +259,29 @@ router.put(
     };
 
     try {
-      const chart = await Chart.findOne({ user: req.user.id });
-
+      const chart = await Chart.findById(req.params.chart_id);
+      // Make sure info exists
+      const targetInfo = chart.info.find(
+        (item) => (item.id === req.params.info_id)
+      );
+      if (!targetInfo) {
+        return res.status(404).json({ msg: 'Info not found' });
+      }
+      
       // See if TaskID is duplicated
-      const sameNameInfo = chart.info.filter(
-        (info) => info.TaskID === updateInfo.TaskID && info.id !== req.params.id
+      const otherInfo = chart.info.filter(
+        (item) => item.id !== req.params.info_id
+      );
+      const sameNameInfo = otherInfo.filter(
+        (item) => item.TaskID === updateInfo.TaskID
       );
       if (sameNameInfo.length) {
         return res.status(400).json({ msg: 'TaskID is duplicated' });
+      }
+
+      // Check user
+      if (chart.user.toString() !== req.user.id) {
+        return res.status(401).json({ msg: 'User not authorized' });
       }
 
       // Get update index
