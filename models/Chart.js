@@ -7,9 +7,9 @@ const ChartSchema = new Schema({
     ref: 'user',
   },
   name: {
-    type: String
+    type: String,
+    required: true,
   },
-
   info: [
     {
       TaskID: {
