@@ -44,7 +44,6 @@ router.post(
       // Create
       const chartFields = {};
       chartFields.user = req.user.id;
-      chartFields.userName = user.name;
       chartFields.name = req.body.name;
       chart = new Chart(chartFields);
       await chart.save();
@@ -76,6 +75,40 @@ router.get('/user/:user_id', async (req, res) => {
 // @route   PUT api/charts/:id
 // @desc    Update chart(project) by id
 // @acces   Private
+router.put(
+  '/:id',
+  [auth, [body('name', 'Please enter project name').notEmpty()]],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      let chart = await Chart.findById(req.params.id);
+      // See if project exists
+      if (!chart) {
+        return res.status(404).json({ msg: 'Project not found' });
+      }
+
+      // Check user
+      if (chart.user.toString() !== req.user.id) {
+        return res.status(401).json({ msg: 'User not authorized' });
+      }
+      // Update
+      const name = req.body.name;
+      chart = await Chart.findByIdAndUpdate(
+        req.params.id,
+        { $set: { name } },
+        { new: true }
+      );
+      await chart.save();
+      res.json(chart);
+    } catch (err) {
+      console.error(err.messge);
+      res.status(500).send('Server Error');
+    }
+  }
+);
 
 // @route   DELETE api/charts/:id
 // @desc    Delete chart(project) by id
@@ -113,13 +146,13 @@ router.put(
     [
       body('TaskID', 'Task ID is required').notEmpty(),
       body('TaskName', 'Task name is required').notEmpty(),
-      body('StartDate', 'Start date or Duration is required')
-        .if(body('Duration').not().exists())
-        .isDate(),
-      body('EndDate', 'End date is required').isDate(),
-      body('Duration', 'Start date or Duration is required')
-        .if(body('StartDate').not().exists())
-        .isNumeric(),
+      // body('StartDate', 'Start date or Duration is required')
+      //   .if(body('Duration').not().exists())
+      //   .isDate(),
+      // body('EndDate', 'End date is required').isDate(),
+      // body('Duration', 'Start date or Duration is required')
+      //   .if(body('StartDate').not().exists())
+      //   .isNumeric(),
     ],
   ],
   async (req, res) => {
@@ -152,17 +185,16 @@ router.put(
 
     try {
       const chart = await Chart.findById(req.params.chart_id);
+      // Check user
+      if (chart.user.toString() !== req.user.id) {
+        return res.status(401).json({ msg: 'User not authorized' });
+      }
       // See if TaskID is duplicated
       const sameNameInfo = chart.info.filter(
         (info) => info.TaskID === newInfo.TaskID
       );
       if (sameNameInfo.length) {
         return res.status(400).json({ msg: 'TaskID is duplicated' });
-      }
-
-      // Check user
-      if (chart.user.toString() !== req.user.id) {
-        return res.status(401).json({ msg: 'User not authorized' });
       }
 
       chart.info.unshift(newInfo);
@@ -181,6 +213,10 @@ router.put(
 router.delete('/info/:chart_id/:info_id', auth, async (req, res) => {
   try {
     const chart = await Chart.findById(req.params.chart_id);
+    // Check user
+    if (chart.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'User not authorized' });
+    }
 
     // Pull out info
     const targetInfo = chart.info.find(
@@ -190,11 +226,6 @@ router.delete('/info/:chart_id/:info_id', auth, async (req, res) => {
     // Make sure info exists
     if (!targetInfo) {
       return res.status(404).json({ msg: 'Info not found' });
-    }
-
-    // Check user
-    if (chart.user.toString() !== req.user.id) {
-      return res.status(401).json({ msg: 'User not authorized' });
     }
 
     // Get remove index
@@ -221,13 +252,6 @@ router.put(
     [
       body('TaskID', 'Task ID is required').notEmpty(),
       body('TaskName', 'Task name is required').notEmpty(),
-      body('StartDate', 'Start date or Duration is required')
-        .if(body('Duration').not().exists())
-        .isDate(),
-      body('EndDate', 'End date is required').isDate(),
-      body('Duration', 'Start date or Duration is required')
-        .if(body('StartDate').not().exists())
-        .isNumeric(),
     ],
   ],
   async (req, res) => {
@@ -260,14 +284,18 @@ router.put(
 
     try {
       const chart = await Chart.findById(req.params.chart_id);
+      // Check user
+      if (chart.user.toString() !== req.user.id) {
+        return res.status(401).json({ msg: 'User not authorized' });
+      }
       // Make sure info exists
       const targetInfo = chart.info.find(
-        (item) => (item.id === req.params.info_id)
+        (item) => item.id === req.params.info_id
       );
       if (!targetInfo) {
         return res.status(404).json({ msg: 'Info not found' });
       }
-      
+
       // See if TaskID is duplicated
       const otherInfo = chart.info.filter(
         (item) => item.id !== req.params.info_id
@@ -277,11 +305,6 @@ router.put(
       );
       if (sameNameInfo.length) {
         return res.status(400).json({ msg: 'TaskID is duplicated' });
-      }
-
-      // Check user
-      if (chart.user.toString() !== req.user.id) {
-        return res.status(401).json({ msg: 'User not authorized' });
       }
 
       // Get update index
@@ -298,5 +321,7 @@ router.put(
     }
   }
 );
+
+// ------------------------- about chart comment -------------------------
 
 module.exports = router;

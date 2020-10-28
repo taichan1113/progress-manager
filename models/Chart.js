@@ -28,7 +28,6 @@ const ChartSchema = new Schema({
       },
       EndDate: {
         type: Date,
-        required: true,
       },
       Duration: {
         type: Number,
@@ -52,9 +51,6 @@ const ChartSchema = new Schema({
       text: {
         type: String,
         required: true,
-      },
-      name: {
-        type: String,
       },
       date: {
         type: Date,
