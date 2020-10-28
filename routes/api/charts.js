@@ -323,5 +323,73 @@ router.put(
 );
 
 // ------------------------- about chart comment -------------------------
+// @route   PUT api/charts/comment/:id
+// @desc    Update chart comment
+// @acces   Private
+router.put(
+  '/comment/:id',
+  [auth, [body('text', 'Text is required').notEmpty()]],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      const user = await User.findById(req.user.id).select('-password');
+      const chart = await Chart.findById(req.params.id);
+      console.log(chart);
+      const newComment = {
+        text: req.body.text,
+        user: req.user.id,
+        name: user.name,
+      };
+
+      chart.comments.unshift(newComment);
+      await chart.save();
+      res.send(chart);
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+// @route  DELETE api/posts/comment/:id/:comment_id
+// @desc   Delete comment
+// @access Private
+router.delete('/comment/:id/:comment_id', auth, async (req, res) => {
+  try {
+    const chart = await Chart.findById(req.params.id);
+
+    // Pull out comment
+    const comment = chart.comments.find(
+      (comment) => comment.id === req.params.comment_id
+    );
+
+    // Make sure comment exists
+    if (!comment) {
+      return res.status(404).json({ msg: 'Comment does not exist' });
+    }
+
+    // Check user
+    if (comment.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'User not authorized' });
+    }
+
+    // Get remove index
+    const removeIndex = chart.comments
+      .map((comment) => comment.user.toString())
+      .indexOf(req.user.id);
+
+    chart.comments.splice(removeIndex, 1);
+
+    await chart.save();
+
+    res.json(chart.comments);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
 
 module.exports = router;
